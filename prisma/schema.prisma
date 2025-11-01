@@ -1,0 +1,255 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  role          UserRole  @default(LECTURE)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+}
+
+enum UserRole {
+  ADMIN
+  OPERATEUR
+  LECTURE
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Supplier {
+  id        String            @id @default(cuid())
+  name      String            @unique
+  contact   String?
+  phone     String?
+  email     String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  invoices  PurchaseInvoice[]
+}
+
+model Product {
+  id                      String               @id @default(cuid())
+  code                    String               @unique
+  name                    String
+  uom                     String               @default("pièce")
+  coutSousTraitanceUnite  Decimal              @db.Decimal(18, 3)
+  coutAutresUnite         Decimal              @default(0) @db.Decimal(18, 3)
+  active                  Boolean              @default(true)
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  bomItems                BomItem[]
+  manufacturingOrders     ManufacturingOrder[]
+  costSnapshots           CostProductSnapshot[]
+}
+
+model Component {
+  id            String                   @id @default(cuid())
+  code          String                   @unique
+  name          String
+  uom           String                   @default("pièce")
+  packColisage  Int?
+  coutStandard  Decimal                  @db.Decimal(18, 3)
+  active        Boolean                  @default(true)
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  bomItems      BomItem[]
+  goodsReceipts GoodsReceipt[]
+  costSnapshots CostComponentSnapshot[]
+}
+
+model Location {
+  id                   String     @id @default(cuid())
+  code                 String     @unique
+  name                 String
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+  goodsReceipts        GoodsReceipt[]
+  movementsFrom        Movement[] @relation("MovementFromLocation")
+  movementsTo          Movement[] @relation("MovementToLocation")
+}
+
+model BomItem {
+  id          String    @id @default(cuid())
+  productId   String
+  componentId String
+  qtyParUnite Decimal   @db.Decimal(18, 3)
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  component   Component @relation(fields: [componentId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, componentId])
+}
+
+model ManufacturingOrder {
+  id            String                    @id @default(cuid())
+  ofCode        String                    @unique
+  productId     String
+  qtyCommandee  Int
+  dateLancement DateTime                  @default(now())
+  statut        ManufacturingOrderStatus  @default(BROUILLON)
+  qtyProduite   Int                       @default(0)
+  lotFini       String?
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  product       Product                   @relation(fields: [productId], references: [id])
+  movements     Movement[]
+}
+
+enum ManufacturingOrderStatus {
+  BROUILLON
+  EN_COURS
+  CLOS
+}
+
+model PurchaseInvoice {
+  id            String         @id @default(cuid())
+  supplierId    String
+  invoiceNo     String
+  invoiceDate   DateTime
+  currency      String         @default("TND")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  supplier      Supplier       @relation(fields: [supplierId], references: [id])
+  goodsReceipts GoodsReceipt[]
+
+  @@unique([supplierId, invoiceNo])
+}
+
+model GoodsReceipt {
+  id                String          @id @default(cuid())
+  purchaseInvoiceId String
+  componentId       String
+  lot               String
+  qty               Int
+  unitCost          Decimal         @db.Decimal(18, 3)
+  locationId        String          @default("DEPOT")
+  createdAt         DateTime        @default(now())
+  purchaseInvoice   PurchaseInvoice @relation(fields: [purchaseInvoiceId], references: [id])
+  component         Component       @relation(fields: [componentId], references: [id])
+  location          Location        @relation(fields: [locationId], references: [id])
+
+  @@index([componentId])
+  @@index([purchaseInvoiceId])
+}
+
+model Movement {
+  id                   String              @id @default(cuid())
+  date                 DateTime            @default(now())
+  type                 MovementType
+  reference            String?
+  ofId                 String?
+  itemType             ItemType
+  itemId               String
+  lot                  String?
+  qty                  Int
+  fromLocationId       String?
+  toLocationId         String?
+  createdBy            String?
+  createdAt            DateTime            @default(now())
+  manufacturingOrder   ManufacturingOrder? @relation(fields: [ofId], references: [id])
+  fromLocation         Location?           @relation("MovementFromLocation", fields: [fromLocationId], references: [id])
+  toLocation           Location?           @relation("MovementToLocation", fields: [toLocationId], references: [id])
+
+  @@index([ofId])
+  @@index([itemId, itemType])
+  @@index([type])
+  @@index([fromLocationId])
+  @@index([toLocationId])
+}
+
+enum MovementType {
+  ENTREE_DEPOT
+  SORTIE_VERS_PIPCOS
+  PRODUCTION_FINI
+  TRANSFERT_FINI_VERS_DEPOT
+  RETOUR_DE_PIPCOS
+}
+
+enum ItemType {
+  COMPONENT
+  PRODUCT
+}
+
+model CostComponentSnapshot {
+  id          String    @id @default(cuid())
+  componentId String    @unique
+  avgCost     Decimal   @db.Decimal(18, 3)
+  computedAt  DateTime  @default(now())
+  component   Component @relation(fields: [componentId], references: [id])
+}
+
+model CostProductSnapshot {
+  id          String   @id @default(cuid())
+  productId   String   @unique
+  unitCost    Decimal  @db.Decimal(18, 3)
+  computedAt  DateTime @default(now())
+  product     Product  @relation(fields: [productId], references: [id])
+}
+
+model StockBalance {
+  id         String   @id @default(cuid())
+  itemType   ItemType
+  itemId     String
+  locationId String
+  qtyOnHand  Int      @default(0)
+  updatedAt  DateTime @updatedAt
+
+  @@unique([itemType, itemId, locationId])
+  @@index([itemType, itemId])
+  @@index([locationId])
+}
+
+model AuditLog {
+  id       String   @id @default(cuid())
+  userId   String?
+  action   String
+  entity   String
+  entityId String?
+  payload  Json
+  at       DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([at])
+}

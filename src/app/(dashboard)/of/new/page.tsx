@@ -89,7 +89,7 @@ export default function NewOFPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Informations de l'OF</CardTitle>
+          <CardTitle>Informations de l&apos;OF</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

@@ -55,7 +55,7 @@ export default async function DashboardPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Tableau de bord</h1>
         <p className="text-muted-foreground">
-          Vue d'ensemble de la gestion de sous-traitance Bikarpharma
+          Vue d&apos;ensemble de la gestion de sous-traitance Bikarpharma
         </p>
       </div>
 

@@ -46,7 +46,7 @@ export default function SignInPage() {
       <Card className="w-[400px]">
         <CardHeader>
           <CardTitle>Bikarpharma</CardTitle>
-          <CardDescription>Connectez-vous pour accéder à l'application</CardDescription>
+          <CardDescription>Connectez-vous pour accéder à l&apos;application</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
